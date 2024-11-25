@@ -2,8 +2,8 @@ name: Update Current Data
 
 on:
   schedule:
-    - cron: "0 0 * * *"    # Midnight
-    - cron: "0 12 * * *"   # Noon
+    - cron: "30 6 * * *"  # 6:30 AM UTC
+    - cron: "45 22 * * *" # 10:45 PM UTC
   workflow_dispatch:        
 
 jobs:
