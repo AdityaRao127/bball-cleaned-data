@@ -14,7 +14,7 @@ def scrape_team_rankings(metric):
         'average_scoring_margin': 'stat/average-scoring-margin',
         'blk_pct': 'stat/blocks-per-game',
         'defensive_efficiency': 'stat/defensive-efficiency',
-        'drb_pct': 'stat/defensive-rebounding-percentage',
+        'drb_pct': 'stat/defensive-rebounding-pct',
         'efg_pct': 'stat/effective-field-goal-pct',
         'flr_pct': 'stat/floor-percentage',
         'ftr': 'stat/free-throw-rate',
@@ -23,7 +23,7 @@ def scrape_team_rankings(metric):
         'orb_pct': 'stat/offensive-rebounding-pct',
         'pfs_pct': 'stat/personal-fouls-per-game',
         'sht_pct': 'stat/shooting-pct',
-        'stls_pdp': 'stat/steals-per-defensive-play',
+        'stls_pdp': 'stat/steal-pct',
         'tov_pct': 'stat/turnover-pct',
         'win_pct': 'stat/win-pct-all-games'
     }
