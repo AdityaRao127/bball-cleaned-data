@@ -35,6 +35,7 @@ def scrape_team_rankings(metric):
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
+        # Find the stats table
         table = soup.find('table', {'class': 'datatable'})
         if not table:
             return None
@@ -51,7 +52,6 @@ def scrape_team_rankings(metric):
                 home = float(cols[5].text.strip().replace('%', ''))
                 away = float(cols[6].text.strip().replace('%', ''))
                 
-                # custom weighted stat
                 weighted_stat = (
                     0.60 * current +
                     0.15 * last_3 +
@@ -118,6 +118,14 @@ def create_current_stats():
     base_dir = "./Current_Data"
     os.makedirs(base_dir, exist_ok=True)
     
+    print("Fetching Win Percentage data...")
+    win_pct_df = scrape_team_rankings('win_pct')
+    if win_pct_df is not None:
+        win_pct_dict = win_pct_df.set_index('Team')['Statistic'].to_dict()
+    else:
+        print("Failed to fetch Win Percentage data.")
+        win_pct_dict = {}
+    
     for metric in metrics:
         print(f"Processing {metric}...")
         metric_dir = os.path.join(base_dir, metric)
@@ -126,9 +134,11 @@ def create_current_stats():
         df = scrape_team_rankings(metric)
         
         if df is not None:
+            df['Win Percentage'] = df['Team'].map(win_pct_dict)
+            
             for team, team_data in df.groupby('Team'):
                 team_file = os.path.join(metric_dir, f'{team}.csv')
-                team_data[['Rank', 'Statistic', 'Year']].to_csv(team_file, index=False)
+                team_data[['Rank', 'Statistic', 'Year', 'Win Percentage']].to_csv(team_file, index=False)
                 print(f"Created {team_file}")
         else:
             print(f"Failed to scrape data for {metric}")
