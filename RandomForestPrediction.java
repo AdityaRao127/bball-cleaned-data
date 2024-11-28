@@ -1,4 +1,4 @@
-%%writefile RandomForestPrediction.java
+
 import weka.classifiers.trees.RandomForest;
 import weka.core.DenseInstance;
 import weka.core.Instance;
