@@ -228,7 +228,6 @@ public static void queryWinsAndLosses(DataStore dataStore) {
                   System.out.println(team + " was not found in the team index.");
                 }
             }
-            queryWinsAndLosses(dataStore);
             if (csvWriter != null) {
                 csvWriter.flush();
                 csvWriter.close();
