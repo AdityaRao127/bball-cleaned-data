@@ -1,4 +1,3 @@
-
 import weka.classifiers.trees.RandomForest;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -7,10 +6,10 @@ import weka.core.Attribute;
 import java.util.Scanner;
 import java.io.*;
 import java.util.*;
-
 public class RandomForestPrediction {
     private static DataStore dataStore;
-    private static FileWriter csvWriter;
+    private static FileWriter predictionWriter;
+    private static FileWriter winLossWriter;
     public static Instances loadTrainingData(String cleanedDataPath) throws IOException {
         ArrayList<Attribute> attributes = new ArrayList<>();
         attributes.add(new Attribute("WeightedStat"));
@@ -45,9 +44,13 @@ public class RandomForestPrediction {
         return trainingData;
     }
 public static void predictOutcomes(String teamName, String schedulePath, String opponentDataPath, RandomForest model) throws Exception {
-    if (csvWriter == null) {
-        csvWriter = new FileWriter("prediction_results.csv");
-        csvWriter.append("Team,Opponent,HSS Home,HSS Away,Win%\n"); 
+    if (predictionWriter == null) {
+        predictionWriter = new FileWriter("prediction_results.csv");
+        predictionWriter.append("Team,Opponent,HSS Home,HSS Away,Win%\n"); 
+    }
+    if (winLossWriter == null) {
+        winLossWriter = new FileWriter("win_loss_records.csv");
+        winLossWriter.append("Team,Wins,Losses,HSS\n"); 
     }
     File scheduleFile = new File(schedulePath);
     BufferedReader reader = new BufferedReader(new FileReader(scheduleFile));
@@ -67,9 +70,13 @@ public static void predictOutcomes(String teamName, String schedulePath, String 
     attributes.add(new Attribute("WeightedStat"));
     Instances predictionData = new Instances("PredictionData", attributes, games.size());
     predictionData.setClassIndex(0);
+    int winCount = 0;
+    int lossCount = 0;
+    double hssCount = 0;
 for (int i = 0; i < games.size(); i++) {
     Game game = games.get(i);
     double homeHSS = loadHSS(teamName, opponentDataPath, game.year);
+    hssCount += homeHSS;
     double awayHSS = loadHSS(game.opponent, opponentDataPath, game.year);
     if (game.location.equals("H")) {
         double homeAdvantageBoost = Math.max(0.5, awayHSS * 0.0325);
@@ -90,18 +97,21 @@ for (int i = 0; i < games.size(); i++) {
     }
     game.setResult(predictedWinner);
     dataStore.addGameResult(String.format("Game #%d: %s vs %s, Winner: %s", i + 1, teamName, game.opponent, predictedWinner));
-    csvWriter.append(String.format("%s,%s,%.5f,%.5f,%.5f\n", teamName, game.opponent, homeHSS, awayHSS, (100 * winPercentage)));
+    predictionWriter.append(String.format("%s,%s,%.5f,%.5f,%.5f\n", teamName, game.opponent, homeHSS, awayHSS, (100 * winPercentage)));
     int homeTeamIndex = getTeamIndex(teamName);
     int awayTeamIndex = getTeamIndex(game.opponent);
     if (predictedWinner.equals(teamName)) {
         dataStore.updateHeadToHead(homeTeamIndex, awayTeamIndex, 1);
         dataStore.updateHeadToHead(awayTeamIndex, homeTeamIndex, 0);
+        winCount++; 
     } else {
         dataStore.updateHeadToHead(homeTeamIndex, awayTeamIndex, 0);
         dataStore.updateHeadToHead(awayTeamIndex, homeTeamIndex, 1);
+        lossCount++;
     }
     printOutcomes(i + 1, teamName, game.opponent, homeHSS, awayHSS, winPercentage * 100, predictedWinner);
 }
+winLossWriter.append(String.format("%s,%d,%d,%.5f\n", teamName, winCount, lossCount, hssCount / games.size()));
 }
 private static int getTeamIndex(String teamName) {
     return dataStore.getTeamIndex(teamName);
@@ -214,23 +224,24 @@ public static void queryWinsAndLosses(DataStore dataStore) {
             int numTeams = dataStore.getNumTeams();
             for (String team : teamsList) {
                 predictOutcomes(team, schedulePath + team + "/" + team + ".csv", opponentDataPath, rf);
-                int teamIndex = getTeamIndex(team);
-                if (teamIndex >= 0) {
-                  int totalWins = 0;
-                  int totalLosses = 0;
-                  for (int i = 0; i < numTeams; i++) {
-                      totalWins += dataStore.getHeadToHeadResult(teamIndex, i);
-                      totalLosses += dataStore.getHeadToHeadResult(i, teamIndex);
-                  }
-                  System.out.println("Total Wins for " + team + ": " + totalWins);
-                  System.out.println("Total Losses for " + team + ": " + totalLosses);
-                } else {
-                  System.out.println(team + " was not found in the team index.");
-                }
             }
-            if (csvWriter != null) {
-                csvWriter.flush();
-                csvWriter.close();
+            if (predictionWriter != null) {
+                predictionWriter.flush();
+                predictionWriter.close();
+            }
+            if (winLossWriter != null) {
+                winLossWriter.flush();
+                winLossWriter.close();
+            }
+            BufferedReader br = new BufferedReader(new FileReader(new File("win_loss_records.csv")));
+            String line = br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] columns = line.split(",");
+                String team = columns[0].trim();
+                String wins = columns[1].trim();
+                String losses = columns[2].trim();
+                String hss = columns[3].trim();
+                System.out.printf("%s had a predicted record of %s-%s and a HoopSight Strength Score of %s\n", team, wins, losses, hss);
             }
         } catch (Exception e) {
             e.printStackTrace();
